@@ -5,7 +5,9 @@ let seed = 1;
 const params = {
   blockCount: 260,     // (グリッド塗りでは未使用)
   gridSize: 32,        // グリッドの一辺サイズ(px)
-  streakCount: 180,    // 速度線(横長の細い線)の本数
+  gridGap: 2,          // グリッドの隙間(px)
+  preBlur: 1.0,        // サンプリング前のぼかし強度(0で無効)
+  streakCount: 80,     // 速度線(横長の細い線)の本数（控えめ）
   streakMaxLen: 0.65,  // 速度線の最大長さ(幅に対する比率)
   streakThickness: 4   // 速度線の太さ(px)
 };
@@ -82,6 +84,8 @@ function setup() {
   bindSlider("streakLen", v => (params.streakMaxLen = Number(v)));
   bindSlider("streakThick", v => (params.streakThickness = Number(v)));
   bindSlider("blockMax", v => (params.gridSize = Number(v)));
+  bindSlider("gridGap", v => (params.gridGap = Number(v)));
+  bindSlider("preBlur", v => (params.preBlur = Number(v)));
 
   const biasEl = document.getElementById("bias");
   if (biasEl) {
@@ -154,6 +158,9 @@ function generateBlocks() {
 
   const base = sourceImage.get();
   base.resize(width, height);
+  if (params.preBlur > 0) {
+    base.filter(BLUR, params.preBlur);
+  }
 
   const pg = createGraphics(base.width, base.height);
   pg.pixelDensity(1);
@@ -177,24 +184,37 @@ function generateBlocks() {
     pg.rect(x, y, len, h);
   }
 
-  // 2) グリッドに揃えた正方形
+  // 2) グリッドに揃えた正方形（平均サンプリング + 隙間）
   let topmostRect = null;
   const gs = Math.max(2, Math.floor(params.gridSize));
-  for (let y = 0; y < pg.height; y += gs) {
-    for (let x = 0; x < pg.width; x += gs) {
-      const sx = constrain(x + Math.floor(gs / 2), 0, pg.width - 1);
-      const sy = constrain(y + Math.floor(gs / 2), 0, pg.height - 1);
-      const col = quantizeToSix(base.get(sx, sy));
+  const gap = Math.max(0, Math.floor(params.gridGap));
+  const cols = Math.ceil(pg.width / gs);
+  const rows = Math.ceil(pg.height / gs);
 
-      const w = Math.min(gs, pg.width - x);
-      const h = Math.min(gs, pg.height - y);
+  // 低解像度へ縮小して平均色を取得
+  const sampler = createGraphics(cols, rows);
+  sampler.pixelDensity(1);
+  sampler.image(base, 0, 0, cols, rows);
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x0 = col * gs;
+      const y0 = row * gs;
+
+      const rx = x0 + Math.floor(gap / 2);
+      const ry = y0 + Math.floor(gap / 2);
+      const rw = Math.max(1, Math.min(gs - gap, pg.width - rx));
+      const rh = Math.max(1, Math.min(gs - gap, pg.height - ry));
+
+      const col4 = sampler.get(col, row);
+      const tone = quantizeToSix(col4);
 
       pg.noStroke();
-      pg.fill(col[0], col[1], col[2], 255);
-      pg.rect(x, y, w, h);
+      pg.fill(tone[0], tone[1], tone[2], 255);
+      pg.rect(rx, ry, rw, rh);
 
-      if (!topmostRect || y < topmostRect.y) {
-        topmostRect = { x, y, w, h };
+      if (!topmostRect || ry < topmostRect.y) {
+        topmostRect = { x: rx, y: ry, w: rw, h: rh };
       }
     }
   }
