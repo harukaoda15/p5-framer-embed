@@ -3,8 +3,8 @@ let resultImage = null;
 let seed = 1;
 
 const params = {
-  blockCount: 260,     // 長方形/正方形ブロックの数
-  blockMax: 90,        // ブロックの最大サイズ(px)
+  blockCount: 260,     // (グリッド塗りでは未使用)
+  gridSize: 32,        // グリッドの一辺サイズ(px)
   streakCount: 180,    // 速度線(横長の細い線)の本数
   streakMaxLen: 0.65,  // 速度線の最大長さ(幅に対する比率)
   streakThickness: 4   // 速度線の太さ(px)
@@ -81,7 +81,7 @@ function setup() {
   bindSlider("streaks", v => (params.streakCount = Number(v)));
   bindSlider("streakLen", v => (params.streakMaxLen = Number(v)));
   bindSlider("streakThick", v => (params.streakThickness = Number(v)));
-  bindSlider("blockMax", v => (params.blockMax = Number(v)));
+  bindSlider("blockMax", v => (params.gridSize = Number(v)));
 
   const biasEl = document.getElementById("bias");
   if (biasEl) {
@@ -177,24 +177,25 @@ function generateBlocks() {
     pg.rect(x, y, len, h);
   }
 
-  // 2) ブロック（長方形／正方形）
+  // 2) グリッドに揃えた正方形
   let topmostRect = null;
-  for (let i = 0; i < params.blockCount; i++) {
-    const bw = Math.floor(random(8, params.blockMax));
-    const bh = Math.floor(random(8, params.blockMax));
-    const x = Math.floor(random(0, pg.width - bw));
-    const y = Math.floor(random(0, pg.height - bh));
+  const gs = Math.max(2, Math.floor(params.gridSize));
+  for (let y = 0; y < pg.height; y += gs) {
+    for (let x = 0; x < pg.width; x += gs) {
+      const sx = constrain(x + Math.floor(gs / 2), 0, pg.width - 1);
+      const sy = constrain(y + Math.floor(gs / 2), 0, pg.height - 1);
+      const col = quantizeToSix(base.get(sx, sy));
 
-    const sx = constrain(x + Math.floor(bw / 2), 0, pg.width - 1);
-    const sy = constrain(y + Math.floor(bh / 2), 0, pg.height - 1);
-    const col = quantizeToSix(base.get(sx, sy));
+      const w = Math.min(gs, pg.width - x);
+      const h = Math.min(gs, pg.height - y);
 
-    pg.noStroke();
-    pg.fill(col[0], col[1], col[2], 255);
-    pg.rect(x, y, bw, bh);
+      pg.noStroke();
+      pg.fill(col[0], col[1], col[2], 255);
+      pg.rect(x, y, w, h);
 
-    if (!topmostRect || y < topmostRect.y || (y === topmostRect.y && bh >= topmostRect.h)) {
-      topmostRect = { x, y, w: bw, h: bh };
+      if (!topmostRect || y < topmostRect.y) {
+        topmostRect = { x, y, w, h };
+      }
     }
   }
 
