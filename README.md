@@ -24,3 +24,23 @@
 - 形式: PNG 推奨（完全一致）。サイズは 1 枚 2MB 前後を目安
 - p5 側は cover 描画（中央トリミング）で表示します
 - `pixelDensity(1)` でDPRの影響を抑制。解像感は素材側で担保
+
+## 現在の確定パラメータ（ローカル正解）
+- 画像: `assets/inputs/kv.webp`（未選択時自動ロード）
+- アニメ: 既定OFF（`?wobble=1` でON）
+- 速度線
+  - 本数 `streakCount`: 80
+  - 最大長 `streakMaxLen`: 0.65
+  - 太さ `streakThickness`: 20（最大固定）
+- グリッド
+  - サイズ `gridSize`: 4
+  - 間隔 `gridGap`: 2
+- ぼかし
+  - 基準 `preBlur`: 0.90
+  - 揺れ幅 `blurAmp`(WOBBLE_BLUR_AMP): 2.0（URLで上書き可）
+  - 揺れ速度 `blurSpeed`(WOBBLE_BLUR_SPEED): 1.5（URLで上書き可）
+
+メモ: 完全再現用の例
+```
+http://localhost:5173/?img=kv.webp&wobble=1
+```
