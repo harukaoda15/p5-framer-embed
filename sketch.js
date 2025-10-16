@@ -85,6 +85,10 @@ function setup() {
   const qsImg = qs.get('img');
   const qsWobble = qs.get('wobble');
   debugEnabled = qs.has('debug');
+  // ローカルの保存値をクリア: ?clear=1 または ?reset=1
+  if (qs.has('clear') || qs.has('reset')) {
+    try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {}
+  }
   const qsCW = qs.get('cw');
   const qsCH = qs.get('ch');
   if (qsCW && qsCH) {
