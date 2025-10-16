@@ -4,7 +4,7 @@ let seed = 1;
 let lastRegenMs = 0;
 let regenIntervalMs = 140; // アニメーションの再生成間隔(ms)
 let tMotion = 0; // パラメータ揺らぎ用の時間
-let wobbleEnabled = true; // 揺らぎON/OFF（既定はON）
+let wobbleEnabled = false; // 揺らぎON/OFF（既定はOFF）
 let debugEnabled = false; // デバッグオーバレイ
 let debugDiv = null; // DOMオーバレイ（p5非依存）
 let fixedCanvasSize = null; // {w,h} 指定時に固定
@@ -155,6 +155,19 @@ function setup() {
   }
 
   // UIイベントはそのまま活かす
+  const toggleBtn = document.getElementById("toggleWobble");
+  if (toggleBtn) {
+    const updateLabel = () => (toggleBtn.textContent = `アニメ: ${wobbleEnabled ? 'ON' : 'OFF'}`);
+    updateLabel();
+    toggleBtn.addEventListener('click', () => {
+      wobbleEnabled = !wobbleEnabled;
+      if (!wobbleEnabled) {
+        params.preBlur = preBlurBase;
+        if (sourceImage) generateBlocks();
+      }
+      updateLabel();
+    });
+  }
 
   // 開始直後にプレースホルダー画像を生成して表示（ファイル未選択でも動く）
   if (!sourceImage) {
