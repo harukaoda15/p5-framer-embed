@@ -7,6 +7,7 @@ let tMotion = 0; // パラメータ揺らぎ用の時間
 let wobbleEnabled = true; // 揺らぎON/OFF（既定はON）
 let debugEnabled = false; // デバッグオーバレイ
 let debugDiv = null; // DOMオーバレイ（p5非依存）
+let fixedCanvasSize = null; // {w,h} 指定時に固定
 const SETTINGS_KEY = "p5glitch-settings-v1";
 const ASSETS_DIR = "assets/inputs/"; // 外部読み込みディレクトリ
 let preBlurBase = 0.90; // スライダ基準値（揺らぎの中心）
@@ -67,9 +68,9 @@ function quantizeToSix(col) {
 
 function setup() {
   const parent = document.getElementById("stage");
-  const w = Math.min(window.innerWidth - 16, 1280);
-  const h = Math.min(window.innerHeight - 80, 800);
-  const c = createCanvas(w, h);
+  const initialW = fixedCanvasSize ? fixedCanvasSize.w : Math.min(window.innerWidth - 16, 1280);
+  const initialH = fixedCanvasSize ? fixedCanvasSize.h : Math.min(window.innerHeight - 80, 800);
+  const c = createCanvas(initialW, initialH);
   c.parent(parent);
   pixelDensity(1);
   frameRate(60);
@@ -84,6 +85,13 @@ function setup() {
   const qsImg = qs.get('img');
   const qsWobble = qs.get('wobble');
   debugEnabled = qs.has('debug');
+  const qsCW = qs.get('cw');
+  const qsCH = qs.get('ch');
+  if (qsCW && qsCH) {
+    const w = Math.max(1, Math.floor(Number(qsCW)));
+    const h = Math.max(1, Math.floor(Number(qsCH)));
+    fixedCanvasSize = { w, h };
+  }
   // パラメータ上書き（スライダ同名キー）
   const qsOverrides = {
     blocks: qs.get('blocks'),
@@ -223,7 +231,11 @@ function bindSlider(id, onChange) {
 
 function windowResized() {
   if (!sourceImage) return;
-  fitCanvasToImage(sourceImage);
+  if (fixedCanvasSize) {
+    resizeCanvas(fixedCanvasSize.w, fixedCanvasSize.h);
+  } else {
+    fitCanvasToImage(sourceImage);
+  }
   generateBlocks();
   redraw();
 }
@@ -281,9 +293,13 @@ function drawDebug() {
 
 function fitCanvasToImage(img) {
   // 画面を優先してキャンバスサイズを決定（画像比率に縛られない）
-  const maxW = Math.max(1, Math.floor(window.innerWidth));
-  const maxH = Math.max(1, Math.floor(window.innerHeight));
-  resizeCanvas(maxW, maxH);
+  if (fixedCanvasSize) {
+    resizeCanvas(fixedCanvasSize.w, fixedCanvasSize.h);
+  } else {
+    const maxW = Math.max(1, Math.floor(window.innerWidth));
+    const maxH = Math.max(1, Math.floor(window.innerHeight));
+    resizeCanvas(maxW, maxH);
+  }
 }
 
 // 画像の色味から: 長方形/正方形ブロック + 横長の速度線（6色量子化 + 灰抑制）
