@@ -169,6 +169,26 @@ function setup() {
     });
   }
 
+  // 現在のスライダ値＋URLパラメータをクエリに反映してコピー
+  const copyBtn = document.getElementById('copyURL');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const q = new URLSearchParams(window.location.search);
+      const set = (k, v) => { if (v !== undefined && v !== null) q.set(k, String(v)); };
+      set('blocks', params.blockCount);
+      set('streaks', params.streakCount);
+      set('streakLen', params.streakMaxLen);
+      set('streakThick', params.streakThickness);
+      set('blockMax', params.gridSize);
+      set('gridGap', params.gridGap);
+      set('preBlur', params.preBlur);
+      set('bias', LUMA_GAMMA);
+      set('wobble', wobbleEnabled ? 1 : 0);
+      const url = `${location.origin}${location.pathname}?${q.toString()}`;
+      try { await navigator.clipboard.writeText(url); copyBtn.textContent = 'URLコピー済'; setTimeout(()=>copyBtn.textContent='URLコピー',1500); } catch(_) {}
+    });
+  }
+
   // 開始直後にプレースホルダー画像を生成して表示（ファイル未選択でも動く）
   if (!sourceImage) {
     sourceImage = createPlaceholderImage(Math.max(640, width), Math.max(360, height));
