@@ -5,6 +5,7 @@ let lastRegenMs = 0;
 let regenIntervalMs = 140; // アニメーションの再生成間隔(ms)
 let tMotion = 0; // パラメータ揺らぎ用の時間
 let wobbleEnabled = true; // 揺らぎON/OFF（既定はON）
+let debugEnabled = false; // デバッグオーバレイ
 const SETTINGS_KEY = "p5glitch-settings-v1";
 const ASSETS_DIR = "assets/inputs/"; // 外部読み込みディレクトリ
 let preBlurBase = 1.0; // スライダ基準値（揺らぎの中心）
@@ -81,6 +82,7 @@ function setup() {
   const qs = new URLSearchParams(window.location.search);
   const qsImg = qs.get('img');
   const qsWobble = qs.get('wobble');
+  debugEnabled = qs.has('debug');
   // パラメータ上書き（スライダ同名キー）
   const qsOverrides = {
     blocks: qs.get('blocks'),
@@ -222,6 +224,7 @@ function draw() {
   } else {
     drawHint();
   }
+  if (debugEnabled) drawDebug();
 }
 
 function drawHint() {
@@ -231,6 +234,25 @@ function drawHint() {
   textAlign(CENTER, CENTER);
   textSize(16);
   text("白と黒を優先。灰は自動で白/黒へ寄せます\n‘白寄せ’でさらに調整可", width / 2, height / 2);
+  pop();
+}
+
+function drawDebug() {
+  push();
+  noStroke();
+  fill(0, 180);
+  rect(8, 8, 280, 70, 6);
+  fill(255);
+  textAlign(LEFT, TOP);
+  textSize(12);
+  const lines = [
+    `canvas: ${width}x${height}`,
+    `gridSize(px): ${Math.floor(params.gridSize)} / gap: ${Math.floor(params.gridGap)}`,
+    `preBlur(base): ${preBlurBase.toFixed(2)} wobble: ${wobbleEnabled ? 'on' : 'off'}`,
+  ];
+  for (let i = 0; i < lines.length; i++) {
+    text(lines[i], 16, 14 + i * 18);
+  }
   pop();
 }
 
