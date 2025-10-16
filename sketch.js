@@ -8,7 +8,7 @@ let wobbleEnabled = true; // 揺らぎON/OFF（既定はON）
 let debugEnabled = false; // デバッグオーバレイ
 const SETTINGS_KEY = "p5glitch-settings-v1";
 const ASSETS_DIR = "assets/inputs/"; // 外部読み込みディレクトリ
-let preBlurBase = 1.0; // スライダ基準値（揺らぎの中心）
+let preBlurBase = 0.90; // スライダ基準値（揺らぎの中心）
 const LAST_IMG_KEY = "p5glitch-last-img";
 // ぼかし揺れの強さ・速度（URLで上書き可）
 let WOBBLE_BLUR_AMP = 1.2;   // 振幅（派手め）
@@ -16,9 +16,9 @@ let WOBBLE_BLUR_SPEED = 1.5; // 速度（やや速め）
 
 const params = {
   blockCount: 260,     // (グリッド塗りでは未使用)
-  gridSize: 32,        // グリッドの一辺サイズ(px)
+  gridSize: 4,         // グリッドの一辺サイズ(px)
   gridGap: 2,          // グリッドの隙間(px)
-  preBlur: 1.0,        // サンプリング前のぼかし強度(0で無効)
+  preBlur: 0.90,       // サンプリング前のぼかし強度(0で無効)
   streakCount: 80,     // 速度線(横長の細い線)の本数（控えめ）
   streakMaxLen: 0.65,  // 速度線の最大長さ(幅に対する比率)
   streakThickness: 4   // 速度線の太さ(px)
