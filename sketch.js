@@ -98,25 +98,24 @@ function setup() {
   if (qsBlurAmp !== null && qsBlurAmp !== undefined) WOBBLE_BLUR_AMP = Number(qsBlurAmp);
   if (qsBlurSpeed !== null && qsBlurSpeed !== undefined) WOBBLE_BLUR_SPEED = Number(qsBlurSpeed);
   Object.entries(qsOverrides).forEach(([id, val]) => {
-    if (val !== null && val !== undefined) {
-      const el = document.getElementById(id);
-      if (el) {
-        el.value = String(val);
-        const valEl = document.getElementById(id + "Val");
-        if (valEl) valEl.textContent = String(val);
-        // 反映
-        switch (id) {
-          case 'blocks': params.blockCount = Number(val); break;
-          case 'streaks': params.streakCount = Number(val); break;
-          case 'streakLen': params.streakMaxLen = Number(val); break;
-          case 'streakThick': params.streakThickness = Number(val); break;
-          case 'blockMax': params.gridSize = Number(val); break;
-          case 'gridGap': params.gridGap = Number(val); break;
-          case 'preBlur': params.preBlur = Number(val); preBlurBase = params.preBlur; break;
-          case 'bias': LUMA_GAMMA = Number(val); break;
-        }
-      }
+    if (val === null || val === undefined) return;
+    const strVal = String(val);
+    // まず内部パラメータに適用
+    switch (id) {
+      case 'blocks': params.blockCount = Number(strVal); break;
+      case 'streaks': params.streakCount = Number(strVal); break;
+      case 'streakLen': params.streakMaxLen = Number(strVal); break;
+      case 'streakThick': params.streakThickness = Number(strVal); break;
+      case 'blockMax': params.gridSize = Number(strVal); break;
+      case 'gridGap': params.gridGap = Number(strVal); break;
+      case 'preBlur': params.preBlur = Number(strVal); preBlurBase = params.preBlur; break;
+      case 'bias': LUMA_GAMMA = Number(strVal); break;
     }
+    // UIが存在する場合のみ同期（埋め込みでは通常存在しない）
+    const el = document.getElementById(id);
+    if (el) el.value = strVal;
+    const valEl = document.getElementById(id + "Val");
+    if (valEl) valEl.textContent = strVal;
   });
   if (qsWobble !== null) {
     wobbleEnabled = qsWobble === '1' || qsWobble === 'true';
@@ -237,8 +236,8 @@ function drawHint() {
 
 function fitCanvasToImage(img) {
   // 画面を優先してキャンバスサイズを決定（画像比率に縛られない）
-  const maxW = Math.floor(window.innerWidth);
-  const maxH = Math.floor(window.innerHeight);
+  const maxW = Math.max(1, Math.floor(window.innerWidth));
+  const maxH = Math.max(1, Math.floor(window.innerHeight));
   resizeCanvas(maxW, maxH);
 }
 
