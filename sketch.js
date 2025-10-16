@@ -73,6 +73,7 @@ function setup() {
   const c = createCanvas(initialW, initialH);
   c.parent(parent);
   pixelDensity(1);
+  noSmooth();
   frameRate(60);
   background(20); // #141414 背景
   drawHint();
