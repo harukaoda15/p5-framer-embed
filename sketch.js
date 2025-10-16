@@ -13,7 +13,7 @@ const ASSETS_DIR = "assets/inputs/"; // 外部読み込みディレクトリ
 let preBlurBase = 0.90; // スライダ基準値（揺らぎの中心）
 const LAST_IMG_KEY = "p5glitch-last-img";
 // ぼかし揺れの強さ・速度（URLで上書き可）
-let WOBBLE_BLUR_AMP = 1.2;   // 振幅（派手め）
+let WOBBLE_BLUR_AMP = 2.0;   // 振幅（大きめ）
 let WOBBLE_BLUR_SPEED = 1.5; // 速度（やや速め）
 
 const params = {
@@ -361,7 +361,7 @@ function generateBlocks() {
     const y = Math.floor(random(pg.height));
     const len = Math.floor(random(pg.width * 0.1, pg.width * params.streakMaxLen));
     const x = Math.floor(random(-Math.floor(len * 0.1), pg.width - Math.floor(len * 0.9)));
-    const h = Math.max(1, Math.floor(random(params.streakThickness - 1, params.streakThickness + 2)));
+    const h = Math.max(1, Math.floor(params.streakThickness));
 
     const sx = constrain(x + Math.floor(len * random(0.15, 0.85)), 0, pg.width - 1);
     const sy = constrain(y, 0, pg.height - 1);
