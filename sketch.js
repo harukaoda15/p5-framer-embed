@@ -73,7 +73,6 @@ function setup() {
   const c = createCanvas(initialW, initialH);
   c.parent(parent);
   pixelDensity(1);
-  noSmooth();
   frameRate(60);
   background(20); // #141414 背景
   drawHint();
@@ -363,7 +362,15 @@ function generateBlocks() {
     }
   }
 
-  // 3) 速度線を最後に描画して上に重ねる
+  // 3) 一番上の四角は必ず純白（従来通り）
+  if (topmostRect) {
+    pg.noStroke();
+    pg.fill(COL_FFFFFF);
+    pg.rect(topmostRect.x, topmostRect.y, topmostRect.w, topmostRect.h);
+  }
+
+  // 4) 速度線（従来順に戻す: 先に線→後でグリッドだった状態へ）
+  //    ただし見た目再現のため、ここでは最初期の描画順に戻します
   for (let i = 0; i < params.streakCount; i++) {
     const y = Math.floor(random(pg.height));
     const len = Math.floor(random(pg.width * 0.1, pg.width * params.streakMaxLen));
@@ -377,13 +384,6 @@ function generateBlocks() {
     pg.noStroke();
     pg.fill(col[0], col[1], col[2], 255);
     pg.rect(x, y, len, h);
-  }
-
-  // 4) 一番上の四角は必ず純白（速度線より優先）
-  if (topmostRect) {
-    pg.noStroke();
-    pg.fill(COL_FFFFFF);
-    pg.rect(topmostRect.x, topmostRect.y, topmostRect.w, topmostRect.h);
   }
 
   resultImage = pg.get();
