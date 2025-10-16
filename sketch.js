@@ -77,7 +77,7 @@ function setup() {
   background(20); // #141414 背景
   drawHint();
 
-  // UIは非表示化。保存済み設定の適用は残す（URL上書きや起動体験のため）
+  // UIを復帰: 保存済み設定の適用
   applySavedSettings();
 
   // URLパラメータ処理（?img=, ?wobble=1）
@@ -154,7 +154,7 @@ function setup() {
     });
   }
 
-  // UIトグルは削除（Framer表示用）
+  // UIイベントはそのまま活かす
 
   // 開始直後にプレースホルダー画像を生成して表示（ファイル未選択でも動く）
   if (!sourceImage) {
