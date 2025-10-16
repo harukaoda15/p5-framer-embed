@@ -23,7 +23,7 @@ const params = {
   preBlur: 0.90,       // サンプリング前のぼかし強度(0で無効)
   streakCount: 80,     // 速度線(横長の細い線)の本数（控えめ）
   streakMaxLen: 0.65,  // 速度線の最大長さ(幅に対する比率)
-  streakThickness: 4   // 速度線の太さ(px)
+  streakThickness: 20  // 速度線の太さ(px) 最大
 };
 
 // 6色パレット（暗→明）
@@ -332,7 +332,7 @@ function generateBlocks() {
     const y = Math.floor(random(pg.height));
     const len = Math.floor(random(pg.width * 0.1, pg.width * params.streakMaxLen));
     const x = Math.floor(random(-Math.floor(len * 0.1), pg.width - Math.floor(len * 0.9)));
-    const h = Math.max(1, Math.floor(random(params.streakThickness - 1, params.streakThickness + 2)));
+    const h = Math.max(1, Math.floor(params.streakThickness));
 
     const sx = constrain(x + Math.floor(len * random(0.15, 0.85)), 0, pg.width - 1);
     const sy = constrain(y, 0, pg.height - 1);
