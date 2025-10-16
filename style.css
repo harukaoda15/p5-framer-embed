@@ -6,20 +6,14 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
-#toolbar {
-  position: sticky; top: 0; z-index: 10;
-  display: flex; gap: 12px; align-items: center; padding: 10px 14px;
-  background: linear-gradient(180deg, rgba(0,0,0,.85), rgba(0,0,0,.55));
-  backdrop-filter: blur(6px);
-  border-bottom: 1px solid rgba(255,255,255,.06);
-}
+#toolbar { display: none !important; }
 #toolbar label, #toolbar button { font-size: 14px; }
 #toolbar input[type="range"] { vertical-align: middle; width: 160px; margin-left: 6px; }
 .btn {
   padding: 6px 10px; border: 1px solid rgba(255,255,255,.15);
   border-radius: 6px; cursor: pointer; user-select: none;
 }
-#stage { height: calc(100vh - 60px); display: grid; place-items: center; padding: 8px; }
-canvas { max-width: 100%; height: auto !important; outline: 1px solid rgba(255,255,255,.08); }
+#stage { height: 100vh; display: grid; place-items: center; padding: 0; }
+canvas { max-width: 100%; height: auto !important; outline: none; }
 button { background: rgba(255,255,255,.06); color: var(--fg); border: 1px solid rgba(255,255,255,.15); padding: 6px 10px; border-radius: 6px; cursor: pointer; }
 button:hover { border-color: var(--accent); }

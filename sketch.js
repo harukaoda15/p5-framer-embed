@@ -155,19 +155,7 @@ function setup() {
   }
 
   // UIイベントはそのまま活かす
-  const toggleBtn = document.getElementById("toggleWobble");
-  if (toggleBtn) {
-    const updateLabel = () => (toggleBtn.textContent = `アニメ: ${wobbleEnabled ? 'ON' : 'OFF'}`);
-    updateLabel();
-    toggleBtn.addEventListener('click', () => {
-      wobbleEnabled = !wobbleEnabled;
-      if (!wobbleEnabled) {
-        params.preBlur = preBlurBase;
-        if (sourceImage) generateBlocks();
-      }
-      updateLabel();
-    });
-  }
+  // UIトグルは非表示化に伴い無効
 
   // 現在のスライダ値＋URLパラメータをクエリに反映してコピー
   const copyBtn = document.getElementById('copyURL');
