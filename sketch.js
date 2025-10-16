@@ -203,8 +203,12 @@ function setup() {
     const last = loadSetting(LAST_IMG_KEY);
     loadFromCandidates([
       last,
-      "kv.png", "kv.jpg", "kv.jpeg", "kv.webp",
-      "default.png", "default.jpg", "default.jpeg", "default.webp"
+      // Prefer WebP kv by default (case-insensitive variants)
+      "kv.webp", "KV.webp",
+      // Then PNG/JPEG fallbacks
+      "kv.png", "KV.png", "kv.jpg", "KV.jpg", "kv.jpeg", "KV.jpeg",
+      // Default placeholders
+      "default.webp", "default.png", "default.jpg", "default.jpeg"
     ]);
   }
 
