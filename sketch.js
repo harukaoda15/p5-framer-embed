@@ -6,6 +6,7 @@ let regenIntervalMs = 140; // アニメーションの再生成間隔(ms)
 let tMotion = 0; // パラメータ揺らぎ用の時間
 let wobbleEnabled = true; // 揺らぎON/OFF（既定はON）
 let debugEnabled = false; // デバッグオーバレイ
+let debugDiv = null; // DOMオーバレイ
 const SETTINGS_KEY = "p5glitch-settings-v1";
 const ASSETS_DIR = "assets/inputs/"; // 外部読み込みディレクトリ
 let preBlurBase = 0.90; // スライダ基準値（揺らぎの中心）
@@ -192,6 +193,21 @@ function setup() {
       }
     }
   });
+
+  // デバッグDOMオーバレイ
+  if (debugEnabled && typeof createDiv === 'function') {
+    debugDiv = createDiv('');
+    debugDiv.id('debugOverlay');
+    debugDiv.style('position', 'fixed');
+    debugDiv.style('top', '8px');
+    debugDiv.style('left', '8px');
+    debugDiv.style('padding', '8px 10px');
+    debugDiv.style('background', 'rgba(0,0,0,0.75)');
+    debugDiv.style('color', '#fff');
+    debugDiv.style('font', '12px ui-monospace, SFMono-Regular, Menlo, monospace');
+    debugDiv.style('z-index', '9999');
+    debugDiv.style('pointer-events', 'none');
+  }
 }
 
 function bindSlider(id, onChange) {
@@ -225,6 +241,14 @@ function draw() {
     drawHint();
   }
   if (debugEnabled) drawDebug();
+  if (debugEnabled && debugDiv) {
+    const lines = [
+      `canvas: ${width}x${height}`,
+      `gridSize(px): ${Math.floor(params.gridSize)} / gap: ${Math.floor(params.gridGap)}`,
+      `preBlur(base): ${preBlurBase.toFixed(2)} wobble: ${wobbleEnabled ? 'on' : 'off'}`,
+    ];
+    debugDiv.html(lines.join('<br/>'));
+  }
 }
 
 function drawHint() {
