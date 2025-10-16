@@ -122,17 +122,23 @@ function setup() {
     wobbleEnabled = qsWobble === '1' || qsWobble === 'true';
   }
 
-  document.getElementById("reseed").addEventListener("click", () => {
-    seed = (seed * 1103515245 + 12345) >>> 0;
-    if (sourceImage) generateBlocks(), redraw();
-  });
+  const reseedEl = document.getElementById("reseed");
+  if (reseedEl) {
+    reseedEl.addEventListener("click", () => {
+      seed = (seed * 1103515245 + 12345) >>> 0;
+      if (sourceImage) generateBlocks(), redraw();
+    });
+  }
 
-  document.getElementById("download").addEventListener("click", () => {
-    if (!resultImage) return;
-    image(resultImage, (width - resultImage.width) / 2, (height - resultImage.height) / 2);
-    saveCanvas("glitch-6colors", "png");
-    if (sourceImage) redraw();
-  });
+  const downloadEl = document.getElementById("download");
+  if (downloadEl) {
+    downloadEl.addEventListener("click", () => {
+      if (!resultImage) return;
+      image(resultImage, (width - resultImage.width) / 2, (height - resultImage.height) / 2);
+      saveCanvas("glitch-6colors", "png");
+      if (sourceImage) redraw();
+    });
+  }
 
   // UIトグルは削除（Framer表示用）
 
