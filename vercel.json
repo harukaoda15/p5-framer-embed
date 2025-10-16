@@ -9,5 +9,13 @@
   ],
   "routes": [
     { "src": "/", "dest": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Frame-Options", "value": "ALLOWALL" }
+      ]
+    }
   ]
 }
