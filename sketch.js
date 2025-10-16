@@ -176,8 +176,8 @@ function setup() {
     const last = loadSetting(LAST_IMG_KEY);
     loadFromCandidates([
       last,
-      "kv.webp", "kv.png", "kv.jpg", "kv.jpeg",
-      "default.webp", "default.jpg", "default.jpeg", "default.png"
+      "kv.png", "kv.jpg", "kv.jpeg", "kv.webp",
+      "default.png", "default.jpg", "default.jpeg", "default.webp"
     ]);
   }
 
