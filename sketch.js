@@ -367,6 +367,22 @@ function generateBlocks() {
   pg.background(20); // #141414 背景
 
   randomSeed(seed);
+  
+  // 1) 速度線（初期仕様どおり: 先に線）
+  for (let i = 0; i < params.streakCount; i++) {
+    const y = Math.floor(random(pg.height));
+    const len = Math.floor(random(pg.width * 0.1, pg.width * params.streakMaxLen));
+    const x = Math.floor(random(-Math.floor(len * 0.1), pg.width - Math.floor(len * 0.9)));
+    const h = Math.max(1, Math.floor(random(params.streakThickness - 1, params.streakThickness + 2)));
+
+    const sx = constrain(x + Math.floor(len * random(0.15, 0.85)), 0, pg.width - 1);
+    const sy = constrain(y, 0, pg.height - 1);
+    const col = quantizeToSix(base.get(sx, sy));
+
+    pg.noStroke();
+    pg.fill(col[0], col[1], col[2], 255);
+    pg.rect(x, y, len, h);
+  }
 
   // 2) グリッドに揃えた正方形（平均サンプリング + 隙間）
   let topmostRect = null;
@@ -403,28 +419,11 @@ function generateBlocks() {
     }
   }
 
-  // 3) 一番上の四角は必ず純白（従来通り）
+  // 3) 一番上の四角は必ず純白
   if (topmostRect) {
     pg.noStroke();
     pg.fill(COL_FFFFFF);
     pg.rect(topmostRect.x, topmostRect.y, topmostRect.w, topmostRect.h);
-  }
-
-  // 4) 速度線（従来順に戻す: 先に線→後でグリッドだった状態へ）
-  //    ただし見た目再現のため、ここでは最初期の描画順に戻します
-  for (let i = 0; i < params.streakCount; i++) {
-    const y = Math.floor(random(pg.height));
-    const len = Math.floor(random(pg.width * 0.1, pg.width * params.streakMaxLen));
-    const x = Math.floor(random(-Math.floor(len * 0.1), pg.width - Math.floor(len * 0.9)));
-    const h = Math.max(1, Math.floor(params.streakThickness));
-
-    const sx = constrain(x + Math.floor(len * random(0.15, 0.85)), 0, pg.width - 1);
-    const sy = constrain(y, 0, pg.height - 1);
-    const col = quantizeToSix(base.get(sx, sy));
-
-    pg.noStroke();
-    pg.fill(col[0], col[1], col[2], 255);
-    pg.rect(x, y, len, h);
   }
 
   resultImage = pg.get();
