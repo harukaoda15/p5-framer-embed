@@ -74,41 +74,7 @@ function setup() {
   background(20); // #141414 背景
   drawHint();
 
-  // UI
-  document.getElementById("file").addEventListener("change", e => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      loadImage(reader.result, img => {
-        sourceImage = img;
-        fitCanvasToImage(img);
-        generateBlocks();
-        redraw();
-      });
-    };
-    reader.readAsDataURL(file);
-  });
-
-  bindSlider("blocks", v => (params.blockCount = Number(v)));
-  bindSlider("streaks", v => (params.streakCount = Number(v)));
-  bindSlider("streakLen", v => (params.streakMaxLen = Number(v)));
-  bindSlider("streakThick", v => (params.streakThickness = Number(v)));
-  bindSlider("blockMax", v => (params.gridSize = Number(v)));
-  bindSlider("gridGap", v => (params.gridGap = Number(v)));
-  bindSlider("preBlur", v => { params.preBlur = Number(v); preBlurBase = params.preBlur; });
-
-  const biasEl = document.getElementById("bias");
-  if (biasEl) {
-    biasEl.value = String(LUMA_GAMMA);
-    biasEl.addEventListener("input", () => {
-      LUMA_GAMMA = Number(biasEl.value);
-      saveSetting("bias", biasEl.value);
-      if (sourceImage) { generateBlocks(); redraw(); }
-    });
-  }
-
-  // 保存済み設定があれば適用
+  // UIは非表示化。保存済み設定の適用は残す（URL上書きや起動体験のため）
   applySavedSettings();
 
   // URLパラメータ処理（?img=, ?wobble=1）
@@ -168,20 +134,7 @@ function setup() {
     if (sourceImage) redraw();
   });
 
-  // ボタンでアニメON/OFF
-  const toggleBtn = document.getElementById("toggleWobble");
-  if (toggleBtn) {
-    const updateLabel = () => (toggleBtn.textContent = `アニメ: ${wobbleEnabled ? 'ON' : 'OFF'}`);
-    updateLabel();
-    toggleBtn.addEventListener('click', () => {
-      wobbleEnabled = !wobbleEnabled;
-      if (!wobbleEnabled) {
-        params.preBlur = preBlurBase;
-        if (sourceImage) generateBlocks();
-      }
-      updateLabel();
-    });
-  }
+  // UIトグルは削除（Framer表示用）
 
   // 開始直後にプレースホルダー画像を生成して表示（ファイル未選択でも動く）
   if (!sourceImage) {
