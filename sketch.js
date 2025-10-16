@@ -1,6 +1,17 @@
 let sourceImage = null;
 let resultImage = null;
 let seed = 1;
+let lastRegenMs = 0;
+let regenIntervalMs = 140; // アニメーションの再生成間隔(ms)
+let tMotion = 0; // パラメータ揺らぎ用の時間
+let wobbleEnabled = true; // 揺らぎON/OFF（既定はON）
+const SETTINGS_KEY = "p5glitch-settings-v1";
+const ASSETS_DIR = "assets/inputs/"; // 外部読み込みディレクトリ
+let preBlurBase = 1.0; // スライダ基準値（揺らぎの中心）
+const LAST_IMG_KEY = "p5glitch-last-img";
+// ぼかし揺れの強さ・速度（URLで上書き可）
+let WOBBLE_BLUR_AMP = 1.2;   // 振幅（派手め）
+let WOBBLE_BLUR_SPEED = 1.5; // 速度（やや速め）
 
 const params = {
   blockCount: 260,     // (グリッド塗りでは未使用)
@@ -59,7 +70,7 @@ function setup() {
   const c = createCanvas(w, h);
   c.parent(parent);
   pixelDensity(1);
-  noLoop();
+  frameRate(60);
   background(20); // #141414 背景
   drawHint();
 
@@ -85,15 +96,64 @@ function setup() {
   bindSlider("streakThick", v => (params.streakThickness = Number(v)));
   bindSlider("blockMax", v => (params.gridSize = Number(v)));
   bindSlider("gridGap", v => (params.gridGap = Number(v)));
-  bindSlider("preBlur", v => (params.preBlur = Number(v)));
+  bindSlider("preBlur", v => { params.preBlur = Number(v); preBlurBase = params.preBlur; });
 
   const biasEl = document.getElementById("bias");
   if (biasEl) {
     biasEl.value = String(LUMA_GAMMA);
     biasEl.addEventListener("input", () => {
       LUMA_GAMMA = Number(biasEl.value);
+      saveSetting("bias", biasEl.value);
       if (sourceImage) { generateBlocks(); redraw(); }
     });
+  }
+
+  // 保存済み設定があれば適用
+  applySavedSettings();
+
+  // URLパラメータ処理（?img=, ?wobble=1）
+  const qs = new URLSearchParams(window.location.search);
+  const qsImg = qs.get('img');
+  const qsWobble = qs.get('wobble');
+  // パラメータ上書き（スライダ同名キー）
+  const qsOverrides = {
+    blocks: qs.get('blocks'),
+    streaks: qs.get('streaks'),
+    streakLen: qs.get('streakLen'),
+    streakThick: qs.get('streakThick'),
+    blockMax: qs.get('blockMax'),
+    gridGap: qs.get('gridGap'),
+    preBlur: qs.get('preBlur'),
+    bias: qs.get('bias')
+  };
+  // ぼかし揺れのURL指定
+  const qsBlurAmp = qs.get('blurAmp');
+  const qsBlurSpeed = qs.get('blurSpeed');
+  if (qsBlurAmp !== null && qsBlurAmp !== undefined) WOBBLE_BLUR_AMP = Number(qsBlurAmp);
+  if (qsBlurSpeed !== null && qsBlurSpeed !== undefined) WOBBLE_BLUR_SPEED = Number(qsBlurSpeed);
+  Object.entries(qsOverrides).forEach(([id, val]) => {
+    if (val !== null && val !== undefined) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = String(val);
+        const valEl = document.getElementById(id + "Val");
+        if (valEl) valEl.textContent = String(val);
+        // 反映
+        switch (id) {
+          case 'blocks': params.blockCount = Number(val); break;
+          case 'streaks': params.streakCount = Number(val); break;
+          case 'streakLen': params.streakMaxLen = Number(val); break;
+          case 'streakThick': params.streakThickness = Number(val); break;
+          case 'blockMax': params.gridSize = Number(val); break;
+          case 'gridGap': params.gridGap = Number(val); break;
+          case 'preBlur': params.preBlur = Number(val); preBlurBase = params.preBlur; break;
+          case 'bias': LUMA_GAMMA = Number(val); break;
+        }
+      }
+    }
+  });
+  if (qsWobble !== null) {
+    wobbleEnabled = qsWobble === '1' || qsWobble === 'true';
   }
 
   document.getElementById("reseed").addEventListener("click", () => {
@@ -107,13 +167,78 @@ function setup() {
     saveCanvas("glitch-6colors", "png");
     if (sourceImage) redraw();
   });
+
+  // ボタンでアニメON/OFF
+  const toggleBtn = document.getElementById("toggleWobble");
+  if (toggleBtn) {
+    const updateLabel = () => (toggleBtn.textContent = `アニメ: ${wobbleEnabled ? 'ON' : 'OFF'}`);
+    updateLabel();
+    toggleBtn.addEventListener('click', () => {
+      wobbleEnabled = !wobbleEnabled;
+      if (!wobbleEnabled) {
+        params.preBlur = preBlurBase;
+        if (sourceImage) generateBlocks();
+      }
+      updateLabel();
+    });
+  }
+
+  // 開始直後にプレースホルダー画像を生成して表示（ファイル未選択でも動く）
+  if (!sourceImage) {
+    sourceImage = createPlaceholderImage(Math.max(640, width), Math.max(360, height));
+    fitCanvasToImage(sourceImage);
+    generateBlocks();
+  }
+
+  // 外部画像読み込み（assets/inputs 配下）: 候補を順に試行（非同期失敗時は次へ）
+  const loadFromCandidates = (names) => {
+    const list = names.filter(Boolean);
+    const attempt = (idx) => {
+      if (idx >= list.length) return;
+      const name = list[idx];
+      const path = ASSETS_DIR + name + "?v=" + Date.now();
+      console.log("try load:", path);
+      loadImage(path, img => {
+        sourceImage = img;
+        fitCanvasToImage(img);
+        generateBlocks();
+        saveSetting(LAST_IMG_KEY, name);
+      }, (err) => {
+        console.warn('Failed to load image:', path, err);
+        attempt(idx + 1);
+      });
+    };
+    attempt(0);
+  };
+
+  if (qsImg) {
+    loadFromCandidates([qsImg]);
+  } else {
+    const last = loadSetting(LAST_IMG_KEY);
+    loadFromCandidates([last, "kv.png", "default.jpg", "default.jpeg", "default.png"]);
+  }
+
+  // キー操作で揺らぎON/OFF（Wキ－）
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'w' || e.key === 'W') {
+      wobbleEnabled = !wobbleEnabled;
+      if (!wobbleEnabled) {
+        params.preBlur = preBlurBase;
+        if (sourceImage) { generateBlocks(); }
+      }
+    }
+  });
 }
 
 function bindSlider(id, onChange) {
   const el = document.getElementById(id);
+  const valEl = document.getElementById(id + "Val");
+  if (valEl) valEl.textContent = String(el.value);
   el.addEventListener("input", () => {
     onChange(el.value);
+    if (valEl) valEl.textContent = String(el.value);
     if (sourceImage) generateBlocks(), redraw();
+    saveSetting(id, el.value);
   });
 }
 
@@ -126,6 +251,8 @@ function windowResized() {
 
 function draw() {
   background(20); // #141414
+  maybeRegenerate();
+  applyMotionWobble();
   if (resultImage) {
     const x = (width - resultImage.width) / 2;
     const y = (height - resultImage.height) / 2;
@@ -227,4 +354,112 @@ function generateBlocks() {
   }
 
   resultImage = pg.get();
+}
+
+function maybeRegenerate() {
+  if (!sourceImage) return;
+  const now = millis();
+  if (!resultImage) {
+    generateBlocks();
+    lastRegenMs = now;
+    return;
+  }
+  if (now - lastRegenMs >= regenIntervalMs) {
+    // ぼかし値の変化のみで再描画
+    generateBlocks();
+    lastRegenMs = now;
+  }
+}
+
+function applyMotionWobble() {
+  if (!sourceImage) return;
+  if (!wobbleEnabled) return;
+  // 経過時間（秒）をベースに、ぼかしのみを微小に上下させる
+  tMotion += deltaTime / 1000;
+  const amp = WOBBLE_BLUR_AMP;       // 上下幅
+  const speed = WOBBLE_BLUR_SPEED;   // 速度
+  const v = preBlurBase + amp * sin(tMotion * speed);
+  params.preBlur = constrain(v, 0, 4);
+}
+
+function createPlaceholderImage(w, h) {
+  const pg = createGraphics(w, h);
+  pg.pixelDensity(1);
+  // ベース: ダーク背景 + 斜めグラデーション
+  pg.background(24);
+  pg.noStroke();
+  for (let i = 0; i < 16; i++) {
+    const t = i / 15;
+    const g = 40 + Math.floor(160 * t);
+    pg.fill(g);
+    pg.rect(-w * 0.2 + i * (w / 16), -h * 0.1 + i * 4, w / 16 + 8, h * 1.2);
+  }
+
+  // ノイズ矩形を散らす
+  for (let i = 0; i < 280; i++) {
+    const rw = Math.floor(random(8, 64));
+    const rh = Math.floor(random(2, 24));
+    const x = Math.floor(random(-16, w + 16));
+    const y = Math.floor(random(-16, h + 16));
+    const g = Math.floor(random(80, 230));
+    pg.fill(g, 200);
+    pg.rect(x, y, rw, rh);
+  }
+
+  // 明部のアクセント
+  for (let i = 0; i < 5; i++) {
+    const x = random(w);
+    const y = random(h);
+    const r = random(60, 180);
+    pg.fill(255, 30);
+    pg.ellipse(x, y, r, r);
+  }
+  return pg.get();
+}
+
+function applySavedSettings() {
+  const s = loadSettings();
+  const setIf = (id, applyFn) => {
+    if (s[id] !== undefined) {
+      const el = document.getElementById(id);
+      if (el) el.value = String(s[id]);
+      applyFn(String(s[id]));
+    }
+  };
+  setIf("blocks", v => (params.blockCount = Number(v)));
+  setIf("streaks", v => (params.streakCount = Number(v)));
+  setIf("streakLen", v => (params.streakMaxLen = Number(v)));
+  setIf("streakThick", v => (params.streakThickness = Number(v)));
+  setIf("blockMax", v => (params.gridSize = Number(v)));
+  setIf("gridGap", v => (params.gridGap = Number(v)));
+  setIf("preBlur", v => { params.preBlur = Number(v); preBlurBase = params.preBlur; });
+  setIf("bias", v => (LUMA_GAMMA = Number(v)));
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveSetting(key, value) {
+  try {
+    const s = loadSettings();
+    s[key] = value;
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  } catch (_) {
+    // ignore
+  }
+}
+
+function loadSetting(key) {
+  try {
+    const s = loadSettings();
+    return s[key];
+  } catch (_) {
+    return undefined;
+  }
 }
