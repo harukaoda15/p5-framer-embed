@@ -174,7 +174,11 @@ function setup() {
     loadFromCandidates([qsImg]);
   } else {
     const last = loadSetting(LAST_IMG_KEY);
-    loadFromCandidates([last, "kv.png", "default.jpg", "default.jpeg", "default.png"]);
+    loadFromCandidates([
+      last,
+      "kv.webp", "kv.png", "kv.jpg", "kv.jpeg",
+      "default.webp", "default.jpg", "default.jpeg", "default.png"
+    ]);
   }
 
   // キー操作で揺らぎON/OFF（Wキ－）
@@ -232,18 +236,27 @@ function drawHint() {
 }
 
 function fitCanvasToImage(img) {
-  const maxW = Math.min(window.innerWidth - 16, 1600);
-  const maxH = Math.min(window.innerHeight - 80, 1000);
-  const scale = Math.min(maxW / img.width, maxH / img.height);
-  resizeCanvas(Math.floor(img.width * scale), Math.floor(img.height * scale));
+  // 画面を優先してキャンバスサイズを決定（画像比率に縛られない）
+  const maxW = Math.floor(window.innerWidth);
+  const maxH = Math.floor(window.innerHeight);
+  resizeCanvas(maxW, maxH);
 }
 
 // 画像の色味から: 長方形/正方形ブロック + 横長の速度線（6色量子化 + 灰抑制）
 function generateBlocks() {
   if (!sourceImage) return;
 
-  const base = sourceImage.get();
-  base.resize(width, height);
+  // cover描画（中央トリミング）でベース画像を生成
+  const base = createGraphics(width, height);
+  base.pixelDensity(1);
+  const imgW = sourceImage.width;
+  const imgH = sourceImage.height;
+  const scale = Math.max(width / imgW, height / imgH);
+  const srcW = Math.floor(width / scale);
+  const srcH = Math.floor(height / scale);
+  const srcX = Math.floor((imgW - srcW) / 2);
+  const srcY = Math.floor((imgH - srcH) / 2);
+  base.image(sourceImage, 0, 0, width, height, srcX, srcY, srcW, srcH);
   if (params.preBlur > 0) {
     base.filter(BLUR, params.preBlur);
   }

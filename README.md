@@ -4,8 +4,9 @@
 
 ## 使い方
 1. `index.html` をブラウザで開く（Chrome 推奨）。
-2. Framer 埋め込み用：`assets/inputs/` に画像ファイル（jpg/png）を置き、URL に `?img=ファイル名` を付けてアクセスします。
-   - 例: `http://localhost:5173/?img=sample.jpg`
+2. Framer 埋め込み用：`assets/inputs/` に画像ファイルを置き、URL に `?img=ファイル名` を付けてアクセスします。
+   - WebP 優先（`*.webp` 推奨、画質80前後、2MB以下）
+   - 例: `http://localhost:5173/?img=kv.webp`
    - 揺らぎ（微小アニメ）は既定OFF。`?wobble=1` でON、`W` キーでトグル。
 3. スライダーの位置はローカルに保存され、次回起動時の初期値になります。
 4. 「ランダム化」でパターンを変更。「保存（PNG）」で書き出し。
@@ -16,4 +17,10 @@
 - `index.html` … UI とスクリプト読み込み
 - `style.css` … スタイル
 - `sketch.js` … グリッチ処理
- - `assets/inputs/` … 外部読み込み用の画像置き場
+ - `assets/inputs/` … 外部読み込み用の画像置き場（`kv.webp` / `default.webp` を優先）
+
+## アセットの推奨
+- 解像度: 横長 1920x1080 以上（推奨: 2560x1440、見栄え重視: 3840x2160）
+- 形式: WebP 優先（画質80前後）、1枚 2MB 以下目標
+- p5 側は cover 描画（中央トリミング）で表示します
+- `pixelDensity(1)` でDPRの影響を抑制。解像感は素材側で担保
