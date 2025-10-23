@@ -17,10 +17,10 @@ let WOBBLE_BLUR_AMP = 3.0;   // 振幅（さらに大きく）
 let WOBBLE_BLUR_SPEED = 10.0; // 速度（かなり速く）
 
 const params = {
-  blockCount: 260,     // (グリッド塗りでは未使用)
+  blockCount: 100,     // (グリッド塗りでは未使用)
   gridSize: 3,         // グリッドの一辺サイズ(px)
-  gridGap: 2,          // グリッドの隙間(px)
-  preBlur: 2.90,       // サンプリング前のぼかし強度(0で無効)
+  gridGap: 1.5,          // グリッドの隙間(px)
+  preBlur: 0.90,       // サンプリング前のぼかし強度(0で無効)
   streakCount: 80,     // 速度線(横長の細い線)の本数（控えめ）
   streakMaxLen: 0.65,  // 速度線の最大長さ(幅に対する比率)
   streakThickness: 20  // 速度線の太さ(px) 最大
@@ -90,6 +90,12 @@ function setup() {
   const qsImg = qs.get('img');
   const qsWobble = qs.get('wobble');
   debugEnabled = qs.has('debug');
+  // UIを表示（?ui=1）: CSSの非表示を上書き
+  if (qs.has('ui') && (qs.get('ui') === '1' || qs.get('ui') === null)) {
+    const st = document.createElement('style');
+    st.textContent = '#toolbar{display:flex !important; gap:12px; align-items:center; padding:8px;}';
+    document.head.appendChild(st);
+  }
   // ローカルの保存値をクリア: ?clear=1 または ?reset=1
   if (qs.has('clear') || qs.has('reset')) {
     try { localStorage.removeItem(SETTINGS_KEY); } catch (_) {}
@@ -161,6 +167,55 @@ function setup() {
       image(resultImage, (width - resultImage.width) / 2, (height - resultImage.height) / 2);
       saveCanvas("glitch-6colors", "png");
       if (sourceImage) redraw();
+    });
+  }
+
+  // 録画（MediaRecorder）: MP4優先 → WebM フォールバック
+  const recordBtn = document.getElementById('record');
+  if (recordBtn) {
+    let recorder = null;
+    let chunks = [];
+    let stopTimer = null;
+    recordBtn.addEventListener('click', async () => {
+      if (!recorder) {
+        try {
+          const fps = Number(new URLSearchParams(location.search).get('fps')) || 30;
+          const seconds = Number(new URLSearchParams(location.search).get('sec')) || 7;
+          const stream = document.querySelector('canvas').captureStream(fps);
+          const tryTypes = [
+            { mimeType: 'video/mp4;codecs=h264', ext: 'mp4' },
+            { mimeType: 'video/webm;codecs=vp9', ext: 'webm' },
+            { mimeType: 'video/webm;codecs=vp8', ext: 'webm' }
+          ];
+          let picked = null;
+          for (const t of tryTypes) {
+            if (MediaRecorder.isTypeSupported(t.mimeType)) { picked = t; break; }
+          }
+          const options = picked ? { mimeType: picked.mimeType, videoBitsPerSecond: 6000000 } : {};
+          recorder = new MediaRecorder(stream, options);
+          chunks = [];
+          recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+          recorder.onstop = () => {
+            const ext = picked ? picked.ext : 'webm';
+            const blob = new Blob(chunks, { type: picked ? picked.mimeType : 'video/webm' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `glitch-${Date.now()}.${ext}`;
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(a.href);
+            recorder = null; chunks = []; recordBtn.textContent = '録画（MP4/WebM）';
+          };
+          recorder.start();
+          recordBtn.textContent = '録画中… クリックで停止';
+          stopTimer = setTimeout(() => { if (recorder && recorder.state === 'recording') recorder.stop(); }, seconds * 1000);
+        } catch (err) {
+          console.error('Record start failed:', err);
+          recorder = null; chunks = []; recordBtn.textContent = '録画（MP4/WebM）';
+        }
+      } else {
+        try { if (stopTimer) clearTimeout(stopTimer); } catch(_) {}
+        if (recorder.state === 'recording') recorder.stop();
+      }
     });
   }
 
@@ -389,7 +444,7 @@ function generateBlocks() {
   // 2) グリッドに揃えた正方形（平均サンプリング + 隙間）
   let topmostRect = null;
   const gs = Math.max(2, Math.floor(params.gridSize));
-  const gap = Math.max(0, Math.floor(params.gridGap));
+  const gap = Math.max(0, Number(params.gridGap)); // 小数対応（1.5, 1.8 など）
   const cols = Math.ceil(pg.width / gs);
   const rows = Math.ceil(pg.height / gs);
 
