@@ -18,7 +18,7 @@ let WOBBLE_BLUR_SPEED = 10.0; // 速度（かなり速く）
 
 const params = {
   blockCount: 260,     // (グリッド塗りでは未使用)
-  gridSize: 4,         // グリッドの一辺サイズ(px)
+  gridSize: 3.5,       // グリッドの一辺サイズ(px) 小数対応
   gridGap: 2,          // グリッドの隙間(px)
   preBlur: 0.90,       // サンプリング前のぼかし強度(0で無効)
   streakCount: 80,     // 速度線(横長の細い線)の本数（控えめ）
@@ -388,7 +388,8 @@ function generateBlocks() {
 
   // 2) グリッドに揃えた正方形（平均サンプリング + 隙間）
   let topmostRect = null;
-  const gs = Math.max(2, Math.floor(params.gridSize));
+  // 小数のグリッドサイズを許容（最小2.0）。描画サイズは整数に丸め
+  const gs = Math.max(2, Number(params.gridSize));
   const gap = Math.max(0, Math.floor(params.gridGap));
   const cols = Math.ceil(pg.width / gs);
   const rows = Math.ceil(pg.height / gs);
@@ -405,8 +406,8 @@ function generateBlocks() {
 
       const rx = x0 + Math.floor(gap / 2);
       const ry = y0 + Math.floor(gap / 2);
-      const rw = Math.max(1, Math.min(gs - gap, pg.width - rx));
-      const rh = Math.max(1, Math.min(gs - gap, pg.height - ry));
+      const rw = Math.max(1, Math.min(Math.floor(gs - gap), pg.width - rx));
+      const rh = Math.max(1, Math.min(Math.floor(gs - gap), pg.height - ry));
 
       const col4 = sampler.get(col, row);
       const tone = quantizeToSix(col4);
