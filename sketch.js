@@ -44,9 +44,9 @@ let LUMA_GAMMA = 0.60; // 小さいほど白方向に寄る（UIスライダで�
 // 0..255 輝度に対する境界（グレー狭め、白広め）
 const THRESHOLDS = [22, 60, 90, 135, 195];
 
-// グレー抑制: 灰を白/黒へ寄せる確率
-const P_LIGHTGRAY_TO_WHITE = 0.80; // EAEAEA -> 白
-const P_MIDGRAY_TO_WHITE   = 0.65; // C0C0C0 -> 白
+// グレー抑制: 灰を白/黒へ寄せる確率（白帯をさらに少し減らす）
+const P_LIGHTGRAY_TO_WHITE = 0.60; // EAEAEA -> 白
+const P_MIDGRAY_TO_WHITE   = 0.50; // C0C0C0 -> 白
 const P_DARKGRAY_TO_BLACK  = 0.70; // 636363/4D4D4D -> 黒
 
 function quantizeToSix(col) {
