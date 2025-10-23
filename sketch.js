@@ -2,7 +2,7 @@ let sourceImage = null;
 let resultImage = null;
 let seed = 1;
 let lastRegenMs = 0;
-let regenIntervalMs = 140; // アニメーションの再生成間隔(ms)
+let regenIntervalMs = 70; // アニメーションの再生成間隔(ms) さらに速く
 let tMotion = 0; // パラメータ揺らぎ用の時間
 let wobbleEnabled = true; // 揺らぎON/OFF（既定はON）
 let debugEnabled = false; // デバッグオーバレイ
@@ -13,8 +13,8 @@ const ASSETS_DIR = "assets/inputs/"; // 外部読み込みディレクトリ
 let preBlurBase = 0.90; // スライダ基準値（揺らぎの中心）
 const LAST_IMG_KEY = "p5glitch-last-img";
 // ぼかし揺れの強さ・速度（URLで上書き可）
-let WOBBLE_BLUR_AMP = 2.0;   // 振幅（大きめ）
-let WOBBLE_BLUR_SPEED = 1.5; // 速度（やや速め）
+let WOBBLE_BLUR_AMP = 3.0;   // 振幅（さらに大きく）
+let WOBBLE_BLUR_SPEED = 10.0; // 速度（かなり速く）
 
 const params = {
   blockCount: 260,     // (グリッド塗りでは未使用)
@@ -25,6 +25,11 @@ const params = {
   streakMaxLen: 0.65,  // 速度線の最大長さ(幅に対する比率)
   streakThickness: 20  // 速度線の太さ(px) 最大
 };
+
+// 速度線の太さのベースと揺らぎ設定（時間で幅が少し変化）
+let streakThickBase = params.streakThickness;
+let STREAK_THICK_AMP = 4.0;      // 太さ揺らぎの振幅
+let STREAK_THICK_SPEED = 2.2;    // 太さ揺らぎの速度
 
 // 6色パレット（暗→明）
 const COL_141414 = [20, 20, 20, 255];      // #141414 (black)
@@ -112,6 +117,11 @@ function setup() {
   const qsBlurSpeed = qs.get('blurSpeed');
   if (qsBlurAmp !== null && qsBlurAmp !== undefined) WOBBLE_BLUR_AMP = Number(qsBlurAmp);
   if (qsBlurSpeed !== null && qsBlurSpeed !== undefined) WOBBLE_BLUR_SPEED = Number(qsBlurSpeed);
+  // スピード線の太さ揺らぎ(URL指定)
+  const qsStreakThickAmp = qs.get('streakThickAmp');
+  const qsStreakThickSpeed = qs.get('streakThickSpeed');
+  if (qsStreakThickAmp !== null && qsStreakThickAmp !== undefined) STREAK_THICK_AMP = Number(qsStreakThickAmp);
+  if (qsStreakThickSpeed !== null && qsStreakThickSpeed !== undefined) STREAK_THICK_SPEED = Number(qsStreakThickSpeed);
   Object.entries(qsOverrides).forEach(([id, val]) => {
     if (val === null || val === undefined) return;
     const strVal = String(val);
@@ -120,7 +130,7 @@ function setup() {
       case 'blocks': params.blockCount = Number(strVal); break;
       case 'streaks': params.streakCount = Number(strVal); break;
       case 'streakLen': params.streakMaxLen = Number(strVal); break;
-      case 'streakThick': params.streakThickness = Number(strVal); break;
+      case 'streakThick': params.streakThickness = Number(strVal); streakThickBase = params.streakThickness; break;
       case 'blockMax': params.gridSize = Number(strVal); break;
       case 'gridGap': params.gridGap = Number(strVal); break;
       case 'preBlur': params.preBlur = Number(strVal); preBlurBase = params.preBlur; break;
@@ -167,6 +177,8 @@ function setup() {
       set('streaks', params.streakCount);
       set('streakLen', params.streakMaxLen);
       set('streakThick', params.streakThickness);
+      set('streakThickAmp', STREAK_THICK_AMP);
+      set('streakThickSpeed', STREAK_THICK_SPEED);
       set('blockMax', params.gridSize);
       set('gridGap', params.gridGap);
       set('preBlur', params.preBlur);
@@ -361,7 +373,9 @@ function generateBlocks() {
     const y = Math.floor(random(pg.height));
     const len = Math.floor(random(pg.width * 0.1, pg.width * params.streakMaxLen));
     const x = Math.floor(random(-Math.floor(len * 0.1), pg.width - Math.floor(len * 0.9)));
-    const h = Math.max(1, Math.floor(params.streakThickness));
+    // 太さ: ベース値に時間的揺らぎを乗算して変動させる
+    const thickOsc = 1 + (STREAK_THICK_AMP / Math.max(1, streakThickBase)) * sin((tMotion + i * 0.13) * STREAK_THICK_SPEED);
+    const h = Math.max(1, Math.floor(streakThickBase * thickOsc));
 
     const sx = constrain(x + Math.floor(len * random(0.15, 0.85)), 0, pg.width - 1);
     const sy = constrain(y, 0, pg.height - 1);
@@ -441,6 +455,9 @@ function applyMotionWobble() {
   const speed = WOBBLE_BLUR_SPEED;   // 速度
   const v = preBlurBase + amp * sin(tMotion * speed);
   params.preBlur = constrain(v, 0, 4);
+
+  // 太さベースも保存（スライダ変更があれば追従）
+  streakThickBase = params.streakThickness;
 }
 
 function createPlaceholderImage(w, h) {
