@@ -8,6 +8,10 @@ let wobbleEnabled = true; // 揺らぎON/OFF（既定はON）
 let debugEnabled = false; // デバッグオーバレイ
 let debugDiv = null; // DOMオーバレイ（p5非依存）
 let fixedCanvasSize = null; // {w,h} 指定時に固定
+let animStartMs = 0; // アニメ開始時刻
+let INTRO_MS = 300;  // カオス時間(ミリ秒) 0.3s に短縮
+let TOTAL_MS = 6000; // 総アニメ時間(ミリ秒)
+let stopped = false; // 最終停止
 const SETTINGS_KEY = "p5glitch-settings-v1";
 const ASSETS_DIR = "assets/inputs/"; // 外部読み込みディレクトリ
 let preBlurBase = 0.90; // スライダ基準値（揺らぎの中心）
@@ -18,7 +22,7 @@ let WOBBLE_BLUR_SPEED = 10.0; // 速度（かなり速く）
 
 const params = {
   blockCount: 100,     // (グリッド塗りでは未使用)
-  gridSize: 3,         // グリッドの一辺サイズ(px)
+  gridSize: 4,         // グリッドの一辺サイズ(px)
   gridGap: 1.5,          // グリッドの隙間(px)
   preBlur: 0.90,       // サンプリング前のぼかし強度(0で無効)
   streakCount: 80,     // 速度線(横長の細い線)の本数（控えめ）
@@ -107,6 +111,17 @@ function setup() {
     const h = Math.max(1, Math.floor(Number(qsCH)));
     fixedCanvasSize = { w, h };
   }
+  // 録画用パラメータ（?sec= で総時間を上書き）
+  const qsSec = qs.get('sec');
+  if (qsSec) {
+    const sec = Math.max(0.1, Number(qsSec));
+    if (!Number.isNaN(sec)) TOTAL_MS = Math.floor(sec * 1000);
+  }
+  const qsIntroMs = qs.get('introMs');
+  if (qsIntroMs) {
+    const ms = Math.max(0, Number(qsIntroMs));
+    if (!Number.isNaN(ms)) INTRO_MS = Math.floor(ms);
+  }
   // パラメータ上書き（スライダ同名キー）
   const qsOverrides = {
     blocks: qs.get('blocks'),
@@ -151,6 +166,8 @@ function setup() {
   if (qsWobble !== null) {
     wobbleEnabled = qsWobble === '1' || qsWobble === 'true';
   }
+
+  // アニメ開始は画像描画準備完了時に設定（画面に表示されるタイミングでカオスが出るように）
 
   const reseedEl = document.getElementById("reseed");
   if (reseedEl) {
@@ -217,6 +234,13 @@ function setup() {
         if (recorder.state === 'recording') recorder.stop();
       }
     });
+    // 画面読み込み直後から自動録画（?autostart=1 または ?rec=1）
+    const qsRec = qs.get('autostart') || qs.get('rec');
+    if (qsRec && (qsRec === '1' || qsRec === 'true')) {
+      requestAnimationFrame(() => {
+        try { recordBtn.click(); } catch (_) {}
+      });
+    }
   }
 
   // UIイベントはそのまま活かす
@@ -249,6 +273,7 @@ function setup() {
     sourceImage = createPlaceholderImage(Math.max(640, width), Math.max(360, height));
     fitCanvasToImage(sourceImage);
     generateBlocks();
+    animStartMs = millis(); // ここで開始（プレースホルダー即時）
   }
 
   // 外部画像読み込み（assets/inputs 配下）: 候補を順に試行（非同期失敗時は次へ）
@@ -264,6 +289,7 @@ function setup() {
         fitCanvasToImage(img);
         generateBlocks();
         saveSetting(LAST_IMG_KEY, name);
+        animStartMs = millis(); // 画像読み込み完了時に開始
       }, (err) => {
         console.warn('Failed to load image:', path, err);
         attempt(idx + 1);
@@ -295,6 +321,10 @@ function setup() {
         params.preBlur = preBlurBase;
         if (sourceImage) { generateBlocks(); }
       }
+    }
+    if (e.key === 'r' || e.key === 'R') {
+      const recordBtn = document.getElementById('record');
+      if (recordBtn) recordBtn.click();
     }
   });
 
@@ -338,8 +368,21 @@ function windowResized() {
 
 function draw() {
   background(20); // #141414
-  maybeRegenerate();
-  applyMotionWobble();
+  // 停止判定
+  const now = millis();
+  const elapsed = now - animStartMs;
+  if (!stopped && elapsed >= TOTAL_MS) {
+    stopped = true;
+    wobbleEnabled = false;
+    // 最終フレームを確定
+    generateBlocks();
+    noLoop();
+  }
+
+  if (!stopped) {
+    maybeRegenerate();
+    applyMotionWobble();
+  }
   if (resultImage) {
     const x = (width - resultImage.width) / 2;
     const y = (height - resultImage.height) / 2;
@@ -421,16 +464,24 @@ function generateBlocks() {
   pg.pixelDensity(1);
   pg.background(20); // #141414 背景
 
-  randomSeed(seed);
+  // カオスは最初の INTRO_MS のみ、それ以降は即通常へ
+  const now = millis();
+  const elapsed = now - animStartMs;
+  const introPhase = elapsed < INTRO_MS;
+  if (!introPhase) randomSeed(seed);
   
   // 1) 速度線（初期仕様どおり: 先に線）
-  for (let i = 0; i < params.streakCount; i++) {
+  // 序盤のみ本数ブースト → 以後は通常本数
+  const streakCountEff = introPhase ? Math.floor(params.streakCount * 3.0) : params.streakCount;
+  for (let i = 0; i < streakCountEff; i++) {
     const y = Math.floor(random(pg.height));
     const len = Math.floor(random(pg.width * 0.1, pg.width * params.streakMaxLen));
     const x = Math.floor(random(-Math.floor(len * 0.1), pg.width - Math.floor(len * 0.9)));
     // 太さ: ベース値に時間的揺らぎを乗算して変動させる
-    const thickOsc = 1 + (STREAK_THICK_AMP / Math.max(1, streakThickBase)) * sin((tMotion + i * 0.13) * STREAK_THICK_SPEED);
-    const h = Math.max(1, Math.floor(streakThickBase * thickOsc));
+    const ampEff = introPhase ? 10.0 : STREAK_THICK_AMP;
+    const spdEff = introPhase ? 10.0 : STREAK_THICK_SPEED;
+    const thickOsc = 1 + (ampEff / Math.max(1, streakThickBase)) * sin((tMotion + i * 0.13) * spdEff);
+    const h = Math.max(1, Math.floor(streakThickBase * (introPhase ? 2.2 : 1.0) * thickOsc));
 
     const sx = constrain(x + Math.floor(len * random(0.15, 0.85)), 0, pg.width - 1);
     const sy = constrain(y, 0, pg.height - 1);
@@ -441,10 +492,28 @@ function generateBlocks() {
     pg.rect(x, y, len, h);
   }
 
+  // 1.5) イントロ0.3秒だけ白い帯を左右から押し込んでカオスを明示
+  if (introPhase) {
+    const p = 1 - constrain(elapsed / INTRO_MS, 0, 1); // 1→0 へ減衰
+    const bands = Math.max(2, Math.floor(lerp(10, 3, 1 - p)));
+    const inward = Math.pow(p, 1.1) * pg.width; // 外側→内側
+    for (let b = 0; b < bands; b++) {
+      const yb = Math.floor(random(pg.height));
+      const hb = Math.floor(lerp(80, 24, 1 - p) * random(0.7, 1.2));
+      const lenb = Math.floor(lerp(pg.width * 0.85, pg.width * 0.35, 1 - p));
+      const side = (b % 2 === 0);
+      const jitterX = Math.floor(random(-60, 60) * p);
+      const xb = side ? Math.floor(-lenb + inward + jitterX) : Math.floor(pg.width - inward - jitterX);
+      pg.noStroke();
+      pg.fill(255, Math.floor(220 * p));
+      pg.rect(xb, yb, lenb, hb);
+    }
+  }
+
   // 2) グリッドに揃えた正方形（平均サンプリング + 隙間）
   let topmostRect = null;
-  const gs = Math.max(2, Math.floor(params.gridSize));
-  const gap = Math.max(0, Number(params.gridGap)); // 小数対応（1.5, 1.8 など）
+  const gs = Math.max(2, Math.floor(introPhase ? Math.max(2, params.gridSize * 2.0) : params.gridSize));
+  const gap = Math.max(0, Number(introPhase ? Math.max(0, params.gridGap + 2) : params.gridGap));
   const cols = Math.ceil(pg.width / gs);
   const rows = Math.ceil(pg.height / gs);
 
@@ -489,6 +558,9 @@ function generateBlocks() {
 function maybeRegenerate() {
   if (!sourceImage) return;
   const now = millis();
+  // カオスは INTRO_MS のみ：その間だけ超高速、それ以外は通常
+  const introPhase = (now - animStartMs) < INTRO_MS;
+  regenIntervalMs = introPhase ? 8 : 70;
   if (!resultImage) {
     generateBlocks();
     lastRegenMs = now;
@@ -506,9 +578,14 @@ function applyMotionWobble() {
   if (!wobbleEnabled) return;
   // 経過時間（秒）をベースに、ぼかしのみを微小に上下させる
   tMotion += deltaTime / 1000;
-  const amp = WOBBLE_BLUR_AMP;       // 上下幅
-  const speed = WOBBLE_BLUR_SPEED;   // 速度
-  const v = preBlurBase + amp * sin(tMotion * speed);
+  const now = millis();
+  const settleT = constrain((now - animStartMs - INTRO_MS) / Math.max(1, TOTAL_MS - INTRO_MS), 0, 1);
+  // 最初の0.3sはさらに強く速く
+  const introPhase = (now - animStartMs) < INTRO_MS;
+  const amp = introPhase ? 10.0 : lerp(8.0, WOBBLE_BLUR_AMP, settleT);       // 序盤は大きく
+  const speed = introPhase ? 100.0 : lerp(18.0, WOBBLE_BLUR_SPEED, settleT); // 約10倍速
+  const base = lerp(preBlurBase + 1.0, preBlurBase, settleT); // 序盤は強めのぼかし基準
+  const v = base + amp * sin(tMotion * speed);
   params.preBlur = constrain(v, 0, 4);
 
   // 太さベースも保存（スライダ変更があれば追従）
